@@ -41,7 +41,7 @@ class saleController extends Controller
                 //buscamos los datos de la carta
 
                 //TODO: Validar los datos antes de guardar el sale
-                 $sale->card_id = $data->card_id;
+                $sale->card_id = $data->card_id;
                 //guardamos el id del ususario
                 $sale->user_id = $user->id;
                 $sale->stock = $data->stock;
@@ -67,24 +67,60 @@ class saleController extends Controller
     public function cardsList($cardname){
 
         $response = "";
+        $getHeaders = apache_request_headers ();
+        $token = $getHeaders['Authorization'];
+        $key = "25634qswy6dctjuvykuil9o8ui7y9tW6ETUIYOGBFjuytgvbUCVUIJ€tcuyvibgh867ui6yftvygcguti7565rtyfrduit68it";
 
-        $cards = card::where('name', stripos($cardname))->get()->first();
+        $decoded = JWT::decode($token, $key, array('HS256'));
 
-        $response= [];
+        //primero verificamos que tiene permisos con su id de usuario
+        $permiso = User::where('name', $decoded)->get()->first();
 
-        foreach ($cards as $card) {
-            $response[] = [
-                "id" => $cards->id,
-                "nombre" => $cards->name,
-                "coleccion" => $cards->colection,
-                "descripcion" => $cards->description
+        if ($permiso->rol == "particular" || $permiso->rol == "profesional" ) {
 
+            $cards = card::where('name','like','%'. $cardname .'%')->get();
 
-            ];
+            $response= [];
 
+            foreach ($cards as $card) {
+                $response[] = [
+                    "id" => $card->id,
+                    "nombre" => $card->name,
+                    "coleccion" => $card->colection,
+                    "descripcion" => $card->description
+                ];
+            }
+        } else {
+            $response = "No tienes permisos";
         }
-
-
         return response()->json($response);
     }
+
+    public function cardsFinder($name){
+        $response = [];
+        $e = "No hay cartas con ese nombre.";
+        $sales = sale::orderBy('cost','asc')->get();
+
+        $cards = card::where('name','like','%'. $name .'%')->get()->first();
+        //var_dump($cards); exit();
+        if (is_null($cards)) {
+            $response[] =[
+                'Error' => $e
+            ];
+        }elseif(str_contains($cards, $name)){
+            for ($i=0; $i < count($sales) ; $i++) { 
+                $card = card::find($sales[$i]->card_id);
+                $user = User::find($sales[$i]->user_id);
+                if(str_contains( $card->name, $name)){
+                    $response[] =[
+                        'name' => $card->name,
+                        'stok' => $sales[$i]->stock,
+                        'price' => $sales[$i]->cost,
+                        'vendedor' => $user->name
+                    ];
+                } 
+            }
+        }
+        return response()->json($response);
     }
+}

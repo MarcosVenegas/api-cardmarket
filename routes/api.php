@@ -39,4 +39,5 @@ Route::prefix('sales')->group(function () {
 
     Route::post('/createSale',[SaleController::class, 'createSale']);
     Route::get('/list/{cardname}',[SaleController::class, 'cardsList']);
+    Route::get('/find/{name}',[SaleController::class, 'cardsFinder']);
 });
